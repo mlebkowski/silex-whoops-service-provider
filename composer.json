@@ -1,0 +1,25 @@
+{
+    "name": "nassau/silex-whoops",
+    "description": "filp/whoops service provider for silex/silex",
+    "require": {
+        "filp/whoops": "~1.1",
+        "silex/silex": "~2.0@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nassau\\SilexWhoops\\": "src/"
+        }
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Maciej Łebkowski",
+            "email": "m.lebkowski@gmail.com"
+        },
+        {
+            "name": "Filipe Dobreira",
+            "homepage": "https://github.com/filp",
+            "role": "Developer"
+        }
+    ]
+}
