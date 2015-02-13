@@ -2,13 +2,14 @@
 
 namespace Nassau\SilexWhoops;
 
+use InvalidArgumentException;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
-use RuntimeException;
 use Silex\Api\EventListenerProviderInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\GetResponseForExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Whoops\Handler\Handler;
@@ -46,8 +47,8 @@ class WhoopsServiceProvider implements ServiceProviderInterface, EventListenerPr
         $app['whoops.silex_info_handler'] = $app->protect(function () use ($app) {
             try {
                 /** @var Request $request */
-                $request = $app['request'];
-            } catch (RuntimeException $e) {
+                $request = $app['request_stack']->getMasterRequest();
+            } catch (InvalidArgumentException $e) {
                 // This error occurred too early in the application's life
                 // and the request instance is not yet available.
                 return;
@@ -62,9 +63,7 @@ class WhoopsServiceProvider implements ServiceProviderInterface, EventListenerPr
                 // General application info:
                 $errorPageHandler->addDataTable('Silex Application', array(
                     'Charset'          => $app['charset'],
-                    'Locale'           => $app['locale'],
                     'Route Class'      => $app['route_class'],
-                    'Dispatcher Class' => $app['dispatcher_class'],
                     'Application Class' => get_class($app),
                 ));
 
@@ -96,15 +95,17 @@ class WhoopsServiceProvider implements ServiceProviderInterface, EventListenerPr
 
     public function subscribe(Container $app, EventDispatcherInterface $dispatcher)
     {
-        $callback = function ($e) use ($app) {
+        $callback = function (GetResponseForExceptionEvent $event) use ($app) {
             $method = Run::EXCEPTION_HANDLER;
+            $exception = $event->getException();
 
             ob_start();
-            $app['whoops']->$method($e);
+            $app['whoops']->$method($exception);
             $response = ob_get_clean();
-            $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
+            $code = $exception instanceof HttpException ? $exception->getStatusCode() : 500;
 
-            return new Response($response, $code);
+            $event->setResponse(new Response($response, $code));
+
         };
 
         $dispatcher->addListener(KernelEvents::EXCEPTION, $callback, -8);
